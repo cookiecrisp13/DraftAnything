@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Draft Anything</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --board:#1F3A2E;
+    --board-dark:#172C22;
+    --panel:#2A4A3B;
+    --chalk:#F5F2E8;
+    --chalk-dim:#B8C4BA;
+    --marker:#F2C94C;
+    --poster:#C1443C;
+    --line: rgba(245,242,232,0.14);
+    --radius: 10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--board);
+    background-image:
+      radial-gradient(rgba(245,242,232,0.035) 1px, transparent 1px);
+    background-size:14px 14px;
+    color:var(--chalk);
+    font-family:'Inter',sans-serif;
+    min-height:100vh;
+  }
+  .display{font-family:'Anton',sans-serif; letter-spacing:0.02em;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 20px 80px;}
+
+  /* Top marquee */
+  .marquee{
+    display:flex; align-items:center; justify-content:space-between;
+    border-bottom:3px solid var(--marker);
+    padding-bottom:14px; margin-bottom:28px;
+  }
+  .marquee .logo{font-size:28px; text-transform:uppercase;}
+  .marquee .logo span{color:var(--marker);}
+  .tag{font-size:12px; color:var(--chalk-dim); letter-spacing:0.08em; text-transform:uppercase;}
+
+  h1,h2,h3{font-family:'Anton',sans-serif; font-weight:400; letter-spacing:0.01em; margin:0 0 4px;}
+  .section-title{font-size:13px; text-transform:uppercase; letter-spacing:0.14em; color:var(--marker); margin-bottom:10px;}
+  label{display:block; font-size:12px; text-transform:uppercase; letter-spacing:0.08em; color:var(--chalk-dim); margin-bottom:6px;}
+  input[type=text], input[type=number], input[type=email], select{
+    width:100%; background:var(--board-dark); border:1px solid var(--line);
+    color:var(--chalk); padding:11px 12px; border-radius:8px; font-size:15px; font-family:inherit;
+  }
+  input:focus, select:focus, button:focus{outline:2px solid var(--marker); outline-offset:2px;}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px; margin-bottom:20px;
+  }
+  .row{display:flex; gap:14px; flex-wrap:wrap;}
+  .row > *{flex:1; min-width:160px;}
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--marker); color:var(--board-dark); border:none; border-radius:8px;
+    padding:12px 20px; font-weight:700; font-size:14px; cursor:pointer;
+    text-transform:uppercase; letter-spacing:0.05em;
+  }
+  .btn:hover{filter:brightness(1.08);}
+  .btn.secondary{background:transparent; color:var(--chalk); border:1px solid var(--line);}
+  .btn.danger{background:var(--poster); color:var(--chalk);}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .btn-row{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+
+  .chip-list{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px;}
+  .chip{
+    background:var(--board-dark); border:1px solid var(--line); border-radius:999px;
+    padding:7px 12px; font-size:13px; display:flex; align-items:center; gap:8px;
+  }
+  .chip button{background:none;border:none;color:var(--poster);cursor:pointer;font-size:14px;font-weight:700;}
+
+  /* toggle group */
+  .toggle-group{display:flex; gap:8px; flex-wrap:wrap;}
+  .toggle{
+    flex:1; min-width:120px; text-align:center; padding:10px 8px; border-radius:8px;
+    border:1px solid var(--line); cursor:pointer; font-size:13px; background:var(--board-dark);
+  }
+  .toggle.active{background:var(--marker); color:var(--board-dark); font-weight:700; border-color:var(--marker);}
+
+  /* ON THE CLOCK scoreboard */
+  .clock-panel{
+    background:var(--board-dark); border:2px solid var(--marker); border-radius:var(--radius);
+    padding:20px; text-align:center; margin-bottom:22px;
+  }
+  .clock-label{font-size:12px; letter-spacing:0.2em; color:var(--marker); text-transform:uppercase;}
+  .clock-name{font-size:40px; margin:6px 0;}
+  .clock-sub{font-size:13px; color:var(--chalk-dim);}
+  .timer{
+    font-size:34px; margin-top:8px;
+  }
+  .timer.low{color:var(--poster);}
+
+  /* Draft board grid */
+  .board-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius);}
+  table.board{border-collapse:collapse; width:100%; min-width:520px;}
+  table.board th, table.board td{
+    border:1px solid var(--line); padding:10px; font-size:13px; text-align:left; vertical-align:top;
+  }
+  table.board th{background:var(--board-dark); position:sticky; top:0; font-size:12px; text-transform:uppercase; letter-spacing:0.05em; color:var(--chalk-dim);}
+  table.board td.pickno{font-family:'IBM Plex Mono',monospace; color:var(--marker); width:36px; text-align:center;}
+  table.board td.filled{background:rgba(242,201,76,0.06);}
+  table.board td.current{background:rgba(242,201,76,0.18); box-shadow: inset 0 0 0 2px var(--marker);}
+  table.board td.empty{color:var(--chalk-dim); font-style:italic;}
+
+  .history{max-height:260px; overflow-y:auto;}
+  .history-item{
+    display:flex; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  .history-item:last-child{border-bottom:none;}
+  .history-item .who{color:var(--marker); font-weight:600;}
+
+  .input-methods{display:flex; gap:8px; margin-bottom:10px;}
+  .pick-input-row{display:flex; gap:10px;}
+  .pick-input-row input{flex:1;}
+  .hint{font-size:12px; color:var(--chalk-dim); margin-top:8px; line-height:1.5;}
+
+  /* Completed rosters */
+  .roster-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:16px;}
+  .roster-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px;}
+  .roster-card h3{font-size:20px; margin-bottom:2px;}
+  .roster-card .count{font-size:12px; color:var(--chalk-dim); margin-bottom:10px;}
+  .roster-card ol{margin:0; padding-left:20px; font-size:14px; line-height:1.9;}
+  .roster-card ol li::marker{color:var(--marker); font-family:'IBM Plex Mono',monospace;}
+
+  .empty-state{
+    text-align:center; padding:40px 20px; color:var(--chalk-dim); font-size:14px;
+  }
+  .view{display:none;}
+  .view.active{display:block;}
+  .flex-between{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+  .small-note{font-size:12px; color:var(--chalk-dim); margin-top:6px;}
+
+  /* Share + identity */
+  .share-row{display:flex; gap:10px;}
+  .share-row input{flex:1; font-family:'IBM Plex Mono',monospace; font-size:13px;}
+  .identity-row{display:flex; gap:10px; align-items:flex-end; margin-top:14px;}
+  .identity-row > div{flex:1;}
+  .turn-banner{
+    margin-top:10px; font-size:13px; padding:9px 12px; border-radius:8px;
+    background:rgba(242,201,76,0.1); border:1px solid var(--line);
+  }
+  .turn-banner.mine{background:rgba(242,201,76,0.22); border-color:var(--marker); font-weight:600;}
+  .loading-screen{text-align:center; padding:80px 20px; color:var(--chalk-dim);}
+  .error-box{
+    background:rgba(193,68,60,0.12); border:1px solid var(--poster); border-radius:var(--radius);
+    padding:18px; margin-bottom:20px;
+  }
+  @media (max-width:600px){
+    .clock-name{font-size:30px;}
+    .marquee .logo{font-size:22px;}
+    .identity-row{flex-direction:column; align-items:stretch;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="marquee">
+    <div class="logo">DRAFT <span>ANYTHING</span></div>
+    <div class="tag" id="phaseTag">Setup</div>
+  </div>
+
+  <!-- ============ LOADING ============ -->
+  <div class="view active" id="view-loading">
+    <div class="loading-screen">Loading draft…</div>
+  </div>
+
+  <!-- ============ VIEW 1: SETUP ============ -->
+  <div class="view" id="view-setup">
+
+    <div class="card">
+      <div class="section-title">The Category</div>
+      <label for="categoryInput">What are you drafting?</label>
+      <input type="text" id="categoryInput" placeholder="e.g. 2010s comedies, original 151 Pokémon, greatest athletes of all time">
+      <div class="chip-list" id="suggestedChips"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Participants</div>
+      <div class="pick-input-row">
+        <input type="text" id="participantName" placeholder="Add a name">
+        <button class="btn secondary" id="addParticipantBtn" type="button">Add</button>
+      </div>
+      <div class="chip-list" id="participantChips"></div>
+      <div class="small-note" id="participantCount">0 drafters added</div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Draft Format</div>
+      <div class="row">
+        <div>
+          <label for="picksPerPerson">Picks per person</label>
+          <input type="number" id="picksPerPerson" min="1" max="30" value="10">
+        </div>
+        <div>
+          <label>Draft order</label>
+          <div class="toggle-group" id="orderToggle">
+            <div class="toggle active" data-value="snake">Snake</div>
+            <div class="toggle" data-value="straight">Straight</div>
+          </div>
+          <div class="hint">Pick order is randomized once when the draft starts, then locked in for every round.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Turn Timer</div>
+      <div class="row">
+        <div>
+          <label>Time limit per pick</label>
+          <div class="toggle-group" id="timerToggle">
+            <div class="toggle" data-value="0">Off</div>
+            <div class="toggle active" data-value="60">60s</div>
+            <div class="toggle" data-value="120">2 min</div>
+            <div class="toggle" data-value="300">5 min</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">How Picks Get Submitted</div>
+      <div class="toggle-group" id="methodToggle">
+        <div class="toggle active" data-value="site">On-site text box</div>
+        <div class="toggle" data-value="email">Email reply</div>
+        <div class="toggle" data-value="text">Text (SMS) reply</div>
+      </div>
+      <div class="hint">Email and text reply require a connected inbox/number — for now, everyone submits through the on-site box on this page, tagged by whichever method you pick above.</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn" id="startDraftBtn" type="button">Start the Draft</button>
+    </div>
+  </div>
+
+  <!-- ============ VIEW 2: DRAFT MODE ============ -->
+  <div class="view" id="view-draft">
+
+    <div class="card">
+      <div class="section-title">Share This Draft</div>
+      <div class="share-row">
+        <input type="text" id="shareLink" readonly>
+        <button class="btn secondary" id="copyLinkBtn" type="button">Copy Link</button>
+      </div>
+      <div class="identity-row">
+        <div>
+          <label for="identitySelect">You're drafting as</label>
+          <select id="identitySelect"></select>
+        </div>
+      </div>
+      <div class="turn-banner" id="turnBanner"></div>
+    </div>
+
+    <div class="clock-panel">
+      <div class="clock-label">On The Clock — Pick <span id="clockPickNum"></span></div>
+      <div class="clock-name display" id="clockName"></div>
+      <div class="clock-sub" id="clockSub"></div>
+      <div class="timer mono" id="clockTimer"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Submit This Pick</div>
+      <div class="pick-input-row">
+        <input type="text" id="pickEntry" placeholder="Type the draftee…">
+        <button class="btn" id="submitPickBtn" type="button">Draft</button>
+      </div>
+      <div class="small-note" id="pickError" style="color:var(--poster); display:none;"></div>
+      <div class="btn-row">
+        <button class="btn secondary" id="undoBtn" type="button">Undo Last Pick</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="flex-between">
+        <div class="section-title" style="margin-bottom:0;">Draft Board</div>
+      </div>
+      <div style="height:12px;"></div>
+      <div class="board-scroll">
+        <table class="board" id="boardTable"></table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Pick History</div>
+      <div class="history" id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- ============ VIEW 3: COMPLETED ============ -->
+  <div class="view" id="view-complete">
+    <div class="card">
+      <div class="flex-between">
+        <div>
+          <div class="section-title" style="margin-bottom:0;">Draft Complete</div>
+          <div class="small-note" id="completeCategory"></div>
+        </div>
+        <button class="btn secondary" id="restartBtn" type="button">Start a New Draft</button>
+      </div>
+    </div>
+
+    <div class="roster-grid" id="rosterGrid"></div>
+
+    <div class="card" style="margin-top:20px;">
+      <div class="section-title">Full Draft Recap</div>
+      <div class="board-scroll">
+        <table class="board" id="recapTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ ERROR ============ -->
+  <div class="view" id="view-error">
+    <div class="error-box">
+      <div id="errorText">Couldn't load this draft.</div>
+    </div>
+    <button class="btn" id="errorHomeBtn" type="button">Start a New Draft</button>
+  </div>
+
+</div>
+
+<script>
+(async function(){
+  // ---------- Safety net ----------
+  // If anything throws before the page reaches its normal view-switching logic,
+  // surface it as a visible error instead of silently stalling on "Loading draft…".
+  function $(id){ return document.getElementById(id); }
+  function setView(name){
+    ["loading","setup","draft","complete","error"].forEach(v => $("view-"+v).classList.remove("active"));
+    $("view-"+name).classList.add("active");
+    const tags = {loading:"Loading", setup:"Setup", draft:"Draft in progress", complete:"Completed", error:"Error"};
+    $("phaseTag").textContent = tags[name];
+  }
+  function showError(msg){
+    $("errorText").textContent = msg;
+    setView("error");
+  }
+  window.addEventListener("error", function(e){
+    showError("Something broke: " + (e.message || "unknown error") + ". Open your browser's dev tools (F12) → Console for the full detail.");
+  });
+
+  // ============================================================
+  // Load the Supabase library — try a couple of CDNs in case one
+  // is blocked (ad blockers/extensions sometimes block a specific host).
+  // ============================================================
+  function loadScript(src){
+    return new Promise((resolve, reject)=>{
+      const s = document.createElement("script");
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error("failed to load " + src));
+      document.head.appendChild(s);
+    });
+  }
+  async function loadSupabaseLibrary(){
+    const sources = [
+      "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js",
+      "https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js",
+    ];
+    for(const src of sources){
+      try{
+        await loadScript(src);
+        if(window.supabase) return true;
+      }catch(e){ /* try the next source */ }
+    }
+    return false;
+  }
+
+  const loaded = await loadSupabaseLibrary();
+  if(!loaded){
+    showError("The Supabase code library couldn't load from either of its usual sources. This is almost always a network block (ad blocker, browser extension, or a firewall/DNS filter) rather than a bug — try a different network, an incognito window with extensions off, or a different browser, then refresh.");
+    return;
+  }
+
+  const SUPABASE_URL = "https://gsdhgqgfudvmdcipcjpt.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_4dNOkr6h_yQt6nsBsApLnw_uzEki7dU";
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  async function createDraft(settings, participantNames) {
+    const { data: draft, error: draftErr } = await supabase
+      .from("drafts")
+      .insert({
+        category: settings.category,
+        picks_per_person: settings.picksPerPerson,
+        order_mode: settings.orderMode,
+        timer_seconds: settings.timerSeconds,
+        submit_method: settings.submitMethod,
+      })
+      .select().single();
+    if (draftErr) throw draftErr;
+
+    const rows = participantNames.map((name, i) => ({ draft_id: draft.id, name, join_order: i }));
+    const { error: partErr } = await supabase.from("participants").insert(rows);
+    if (partErr) throw partErr;
+
+    return draft.id;
+  }
+
+  async function startDraftRpc(draftId) {
+    const { data, error } = await supabase.rpc("start_draft", { p_draft_id: draftId });
+    if (error) throw error;
+    return data;
+  }
+
+  async function getDraftState(draftId) {
+    const { data: draft, error: draftErr } = await supabase.from("drafts").select("*").eq("id", draftId).single();
+    if (draftErr) throw draftErr;
+    const { data: participantsData, error: partErr } = await supabase.from("participants").select("*").eq("draft_id", draftId).order("join_order");
+    if (partErr) throw partErr;
+    const { data: picksData, error: pickErr } = await supabase.from("picks").select("*").eq("draft_id", draftId).order("pick_number");
+    if (pickErr) throw pickErr;
+    return { draft, participants: participantsData, picks: picksData };
+  }
+
+  async function submitPickRpc(draftId, participantId, value, method) {
+    const { data, error } = await supabase.rpc("submit_pick", {
+      p_draft_id: draftId, p_participant_id: participantId, p_value: value, p_method: method,
+    });
+    if (error) throw error;
+    return data;
+  }
+
+  async function undoLastPickRpc(draftId) {
+    const { error } = await supabase.rpc("undo_last_pick", { p_draft_id: draftId });
+    if (error) throw error;
+  }
+
+  function subscribeToDraft(draftId, onChange) {
+    return supabase
+      .channel(`draft-${draftId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "picks", filter: `draft_id=eq.${draftId}` }, onChange)
+      .on("postgres_changes", { event: "*", schema: "public", table: "drafts", filter: `id=eq.${draftId}` }, onChange)
+      .subscribe();
+  }
+
+  // ============================================================
+  // Local state
+  // ============================================================
+  let setupParticipants = []; // {name} — only used before the draft is created
+  let draftId = null;
+  let draftRow = null;         // row from `drafts`
+  let participantsRow = [];    // rows from `participants`, ordered by join_order
+  let picksRow = [];           // rows from `picks`, ordered by pick_number
+  let myParticipantId = null;
+  let channel = null;
+  let timerHandle = null;
+  let timeRemaining = 0;
+
+  const SUGGESTIONS = [
+    "2010s comedies", "Original 151 Pokémon", "Greatest athletes of all time",
+    "Best pizza toppings", "90s sitcoms", "Marvel villains"
+  ];
+
+  function identityKey(id){ return `draft-anything-identity-${id}`; }
+
+  // ============================================================
+  // Setup view
+  // ============================================================
+  function renderSuggestions(){
+    $("suggestedChips").innerHTML = SUGGESTIONS.map(s =>
+      `<span class="chip" style="cursor:pointer" data-cat="${s}">${s}</span>`
+    ).join("");
+    document.querySelectorAll("#suggestedChips .chip").forEach(el=>{
+      el.addEventListener("click", ()=>{ $("categoryInput").value = el.dataset.cat; });
+    });
+  }
+
+  function renderParticipantChips(){
+    $("participantChips").innerHTML = setupParticipants.map((p,i) =>
+      `<span class="chip">${p.name} <button data-idx="${i}" aria-label="Remove ${p.name}">✕</button></span>`
+    ).join("");
+    $("participantCount").textContent = setupParticipants.length + (setupParticipants.length===1 ? " drafter added" : " drafters added");
+    document.querySelectorAll("#participantChips button").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        setupParticipants.splice(parseInt(btn.dataset.idx),1);
+        renderParticipantChips();
+      });
+    });
+  }
+
+  function setupToggleGroup(id, onChange){
+    const group = $(id);
+    group.querySelectorAll(".toggle").forEach(t=>{
+      t.addEventListener("click", ()=>{
+        group.querySelectorAll(".toggle").forEach(x=>x.classList.remove("active"));
+        t.classList.add("active");
+        onChange(t.dataset.value);
+      });
+    });
+  }
+
+  let orderMode = "snake", timerSeconds = 60, submitMethod = "site";
+
+  renderSuggestions();
+  renderParticipantChips();
+
+  $("addParticipantBtn").addEventListener("click", ()=>{
+    const val = $("participantName").value.trim();
+    if(!val) return;
+    setupParticipants.push({name: val});
+    $("participantName").value = "";
+    renderParticipantChips();
+  });
+  $("participantName").addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){ e.preventDefault(); $("addParticipantBtn").click(); }
+  });
+
+  setupToggleGroup("orderToggle", v => orderMode = v);
+  setupToggleGroup("timerToggle", v => timerSeconds = parseInt(v));
+  setupToggleGroup("methodToggle", v => submitMethod = v);
+
+  $("startDraftBtn").addEventListener("click", async ()=>{
+    const category = $("categoryInput").value.trim() || "Untitled category";
+    const picksPerPerson = Math.max(1, parseInt($("picksPerPerson").value) || 10);
+
+    if(setupParticipants.length < 2){
+      alert("Add at least 2 participants before starting.");
+      return;
+    }
+
+    $("startDraftBtn").disabled = true;
+    $("startDraftBtn").textContent = "Creating…";
+    try{
+      const newId = await createDraft(
+        { category, picksPerPerson, orderMode, timerSeconds, submitMethod },
+        setupParticipants.map(p=>p.name)
+      );
+      await startDraftRpc(newId);
+      goToDraft(newId, /*pushHistory*/ true);
+    }catch(err){
+      alert("Couldn't create the draft: " + err.message);
+      $("startDraftBtn").disabled = false;
+      $("startDraftBtn").textContent = "Start the Draft";
+    }
+  });
+
+  // ============================================================
+  // Loading / routing a draft link
+  // ============================================================
+  function getUrlDraftId(){
+    return new URLSearchParams(window.location.search).get("draft");
+  }
+  function setUrlDraftId(id, push){
+    const url = new URL(window.location.href);
+    url.searchParams.set("draft", id);
+    if(push) window.history.pushState({}, "", url); else window.history.replaceState({}, "", url);
+  }
+  function clearUrlDraftId(){
+    const url = new URL(window.location.href);
+    url.searchParams.delete("draft");
+    window.history.pushState({}, "", url);
+  }
+
+  async function goToDraft(id, pushHistory){
+    draftId = id;
+    setUrlDraftId(id, pushHistory);
+    myParticipantId = localStorage.getItem(identityKey(id)) || null;
+    try{
+      await refreshState();
+    }catch(err){
+      showError("This draft link doesn't seem to work: " + err.message);
+      return;
+    }
+    if(channel) supabase.removeChannel(channel);
+    channel = subscribeToDraft(draftId, async ()=>{
+      try{ await refreshState(); renderCurrentPhase(); }catch(e){ /* ignore transient refresh errors */ }
+    });
+    renderCurrentPhase();
+  }
+
+  function showError(message){
+    $("errorText").textContent = message;
+    setView("error");
+  }
+
+  async function refreshState(){
+    const state = await getDraftState(draftId);
+    draftRow = state.draft;
+    participantsRow = state.participants;
+    picksRow = state.picks;
+  }
+
+  function renderCurrentPhase(){
+    if(draftRow.status === "complete"){
+      renderCompleteView();
+      setView("complete");
+    } else {
+      renderDraftView();
+      setView("draft");
+    }
+  }
+
+  // ============================================================
+  // Draft view
+  // ============================================================
+  function numParticipants(){ return participantsRow.length; }
+  function currentPickNumber(){ return picksRow.length; } // next open slot
+  function totalPicks(){ return draftRow.draft_order.length; }
+
+  function pickNumberForCell(round, participantId){
+    const n = numParticipants();
+    for(let i = round*n; i < (round+1)*n; i++){
+      if(draftRow.draft_order[i] === participantId) return i;
+    }
+    return -1;
+  }
+
+  function renderBoardInto(tableEl){
+    let html = "<thead><tr><th>Rd</th>";
+    participantsRow.forEach(p => html += `<th>${p.name}</th>`);
+    html += "</tr></thead><tbody>";
+    const cur = currentPickNumber();
+    for(let r=0; r<draftRow.picks_per_person; r++){
+      html += `<tr><td class="pickno">${r+1}</td>`;
+      for(let c=0; c<numParticipants(); c++){
+        const pn = pickNumberForCell(r, participantsRow[c].id);
+        const pick = picksRow.find(p => p.pick_number === pn);
+        let cls = "empty", content = "—";
+        if(pick){ cls = "filled"; content = pick.value; }
+        else if(pn === cur){ cls = "empty current"; }
+        html += `<td class="${cls}">${content}</td>`;
+      }
+      html += "</tr>";
+    }
+    html += "</tbody>";
+    tableEl.innerHTML = html;
+  }
+
+  function populateIdentitySelect(){
+    const sel = $("identitySelect");
+    const prev = myParticipantId;
+    sel.innerHTML = `<option value="">Spectator (not picking)</option>` +
+      participantsRow.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
+    sel.value = prev || "";
+  }
+
+  function renderDraftView(){
+    populateIdentitySelect();
+    $("shareLink").value = window.location.href;
+
+    const cur = currentPickNumber();
+    const total = totalPicks();
+    const currentParticipantId = draftRow.draft_order[cur];
+    const currentPerson = participantsRow.find(p => p.id === currentParticipantId);
+    const round = Math.floor(cur / numParticipants()) + 1;
+
+    $("clockPickNum").textContent = `${cur+1} of ${total}`;
+    $("clockName").textContent = currentPerson ? currentPerson.name : "—";
+    $("clockSub").textContent = `Round ${round} · ${draftRow.category}`;
+
+    const isMyTurn = myParticipantId && myParticipantId === currentParticipantId;
+    const banner = $("turnBanner");
+    banner.classList.toggle("mine", !!isMyTurn);
+    banner.textContent = isMyTurn
+      ? "It's your turn — go ahead and submit a pick."
+      : `Waiting on ${currentPerson ? currentPerson.name : "the next drafter"}.`;
+
+    $("pickEntry").disabled = !isMyTurn;
+    $("submitPickBtn").disabled = !isMyTurn;
+    $("pickEntry").placeholder = isMyTurn ? "Type the draftee…" : "Not your turn yet";
+    $("pickError").style.display = "none";
+    $("undoBtn").disabled = picksRow.length === 0;
+
+    renderBoardInto($("boardTable"));
+    renderHistory();
+
+    if(isMyTurn) startTimer(); else stopTimer();
+  }
+
+  function renderHistory(){
+    const items = picksRow.slice().reverse().map(pick => {
+      const person = participantsRow.find(p => p.id === pick.participant_id);
+      return `<div class="history-item"><span><span class="who">${person ? person.name : "?"}</span> — ${pick.value}</span><span class="mono">#${pick.pick_number+1}</span></div>`;
+    });
+    $("historyList").innerHTML = items.length ? items.join("") : `<div class="empty-state">No picks yet — first one's up.</div>`;
+  }
+
+  function stopTimer(){
+    clearInterval(timerHandle);
+    $("clockTimer").textContent = "";
+  }
+
+  function startTimer(){
+    clearInterval(timerHandle);
+    if(!draftRow.timer_seconds || draftRow.timer_seconds <= 0){
+      $("clockTimer").textContent = "";
+      return;
+    }
+    timeRemaining = draftRow.timer_seconds;
+    updateTimerDisplay();
+    timerHandle = setInterval(async ()=>{
+      timeRemaining--;
+      updateTimerDisplay();
+      if(timeRemaining <= 0){
+        clearInterval(timerHandle);
+        // Only the person whose turn it is auto-skips, so simultaneous
+        // viewers don't all race to submit the same skip.
+        try{
+          await submitPickRpc(draftId, myParticipantId, "(auto-skipped)", draftRow.submit_method);
+          await refreshState();
+          renderCurrentPhase();
+        }catch(e){ /* someone else's action likely already advanced the turn */ }
+      }
+    }, 1000);
+  }
+  function updateTimerDisplay(){
+    const el = $("clockTimer");
+    const m = Math.floor(timeRemaining/60), s = timeRemaining%60;
+    el.textContent = `${m}:${s.toString().padStart(2,"0")}`;
+    el.classList.toggle("low", timeRemaining <= 10);
+  }
+
+  $("identitySelect").addEventListener("change", (e)=>{
+    myParticipantId = e.target.value || null;
+    if(myParticipantId) localStorage.setItem(identityKey(draftId), myParticipantId);
+    else localStorage.removeItem(identityKey(draftId));
+    renderDraftView();
+  });
+
+  $("copyLinkBtn").addEventListener("click", async ()=>{
+    try{
+      await navigator.clipboard.writeText($("shareLink").value);
+      $("copyLinkBtn").textContent = "Copied!";
+      setTimeout(()=> $("copyLinkBtn").textContent = "Copy Link", 1500);
+    }catch(e){
+      $("shareLink").select();
+    }
+  });
+
+  $("submitPickBtn").addEventListener("click", async ()=>{
+    const val = $("pickEntry").value.trim();
+    if(!val || !myParticipantId) return;
+    clearInterval(timerHandle);
+    $("submitPickBtn").disabled = true;
+    try{
+      await submitPickRpc(draftId, myParticipantId, val, draftRow.submit_method);
+      $("pickEntry").value = "";
+      $("pickError").style.display = "none";
+      await refreshState();
+      renderCurrentPhase();
+    }catch(err){
+      $("pickError").textContent = err.message;
+      $("pickError").style.display = "block";
+      $("submitPickBtn").disabled = false;
+    }
+  });
+  $("pickEntry").addEventListener("keydown", (e)=>{
+    if(e.key === "Enter"){ e.preventDefault(); $("submitPickBtn").click(); }
+  });
+
+  $("undoBtn").addEventListener("click", async ()=>{
+    $("undoBtn").disabled = true;
+    try{
+      await undoLastPickRpc(draftId);
+      await refreshState();
+      renderCurrentPhase();
+    }catch(err){
+      alert("Couldn't undo: " + err.message);
+    }
+  });
+
+  // ============================================================
+  // Completed view
+  // ============================================================
+  function renderCompleteView(){
+    $("completeCategory").textContent = `Category: ${draftRow.category} · ${draftRow.picks_per_person} picks each · ${participantsRow.length} drafters`;
+
+    $("rosterGrid").innerHTML = participantsRow.map(p => {
+      const items = picksRow.filter(pk => pk.participant_id === p.id).map(pk => pk.value);
+      return `
+        <div class="roster-card">
+          <h3>${p.name}</h3>
+          <div class="count">${items.length} picks</div>
+          <ol>${items.map(v=>`<li>${v}</li>`).join("")}</ol>
+        </div>
+      `;
+    }).join("");
+
+    renderBoardInto($("recapTable"));
+  }
+
+  $("restartBtn").addEventListener("click", resetToSetup);
+  $("errorHomeBtn").addEventListener("click", resetToSetup);
+
+  function resetToSetup(){
+    if(channel){ supabase.removeChannel(channel); channel = null; }
+    clearInterval(timerHandle);
+    draftId = null; draftRow = null; participantsRow = []; picksRow = []; myParticipantId = null;
+    setupParticipants = [];
+    $("categoryInput").value = "";
+    $("participantName").value = "";
+    renderParticipantChips();
+    clearUrlDraftId();
+    setView("setup");
+  }
+
+  // ============================================================
+  // Boot
+  // ============================================================
+  window.addEventListener("popstate", ()=>{
+    const id = getUrlDraftId();
+    if(id) goToDraft(id, false); else resetToSetup();
+  });
+
+  const initialId = getUrlDraftId();
+  if(initialId){
+    goToDraft(initialId, false);
+  }else{
+    setView("setup");
+  }
+})();
+</script>
+</body>
+</html>
