@@ -274,6 +274,7 @@
       <div class="small-note" id="pickError" style="color:var(--poster); display:none;"></div>
       <div class="btn-row">
         <button class="btn secondary" id="undoBtn" type="button">Undo Last Pick</button>
+        <button class="btn danger" id="endDraftBtn" type="button">End Draft</button>
       </div>
     </div>
 
@@ -762,6 +763,21 @@
       renderCurrentPhase();
     }catch(err){
       alert("Couldn't undo: " + err.message);
+    }
+  });
+
+  $("endDraftBtn").addEventListener("click", async ()=>{
+    const confirmed = confirm("End this draft now? Whatever's been picked so far will be locked in as everyone's final team — this can't be undone.");
+    if(!confirmed) return;
+    $("endDraftBtn").disabled = true;
+    try{
+      const { error } = await supabase.from("drafts").update({ status: "complete" }).eq("id", draftId);
+      if(error) throw error;
+      await refreshState();
+      renderCurrentPhase();
+    }catch(err){
+      alert("Couldn't end the draft: " + err.message);
+      $("endDraftBtn").disabled = false;
     }
   });
 
